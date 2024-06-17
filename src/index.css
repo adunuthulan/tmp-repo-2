@@ -189,7 +189,7 @@ button {
   background-color: #444655;
 }
 
-.main-header img:not(:nth-child(even)) {
+.gpt-image {
   display: block;
   border-radius: 0.3rem;
   width: 1.8rem;
@@ -289,4 +289,20 @@ button {
   .main-header li {
     gap: 1rem;
   }
+}
+
+.chat-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-top: 2rem;
+  border-radius: 0.5rem; 
+}
+
+.chat-video {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-top: 2rem;
+  border-radius: 0.5rem; 
 }

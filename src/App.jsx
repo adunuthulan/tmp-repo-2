@@ -7,6 +7,7 @@ import {
 } from "react";
 import { BiPlus, BiUser, BiSend, BiSolidUserCircle } from "react-icons/bi";
 import { MdOutlineArrowLeft, MdOutlineArrowRight } from "react-icons/md";
+import { fathersDayResponses, getFathersDayResponse, getRandomResponse as getRandomKey } from "./FathersDayResponder";
 
 function App() {
   const [text, setText] = useState("");
@@ -18,6 +19,8 @@ function App() {
   const [errorText, setErrorText] = useState("");
   const [isShowSidebar, setIsShowSidebar] = useState(false);
   const scrollToLastItem = useRef(null);
+  const [displayed, setDisplayed] = useState(new Set());
+  const [foundSecrets, setFoundSecrets] = useState(false);
 
   const createNewChat = () => {
     setMessage(null);
@@ -39,57 +42,43 @@ function App() {
     e.preventDefault();
     if (!text) return;
 
+    // wait to simulate waiting for response
     setIsResponseLoading(true);
-    setErrorText("");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const options = {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": import.meta.env.VITE_AUTH_TOKEN,
-      },
-      body: JSON.stringify({
-        message: text,
-      }),
-    };
+    const response = getFathersDayResponse(text);
 
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/completions`,
-        options
-      );
-
-      if (response.status === 429) {
-        return setErrorText("Too many requests, please try again later.");
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        setErrorText(data.error.message);
-        setText("");
-      } else {
-        setErrorText(false);
-      }
-
-      if (!data.error) {
-        setErrorText("");
-        setMessage(data.choices[0].message);
-        setTimeout(() => {
-          scrollToLastItem.current?.lastElementChild?.scrollIntoView({
-            behavior: "smooth",
-          });
-        }, 1);
-        setTimeout(() => {
-          setText("");
-        }, 2);
-      }
-    } catch (e) {
-      setErrorText(e.message);
-      console.error(e);
-    } finally {
-      setIsResponseLoading(false);
+    if (Object.keys(fathersDayResponses).length === displayed.size) {
+      setFoundSecrets(true);
     }
+
+    if (!response) {
+
+      if (Object.keys(fathersDayResponses).length === displayed.size) {
+        setMessage({text: "You've found all there is to find from DadGPT. Happy Father's Day!"});
+      } else {
+        var randomKey = null;
+        while (randomKey === null || displayed.has(randomKey)) {
+          randomKey = getRandomKey();
+        }
+        setMessage({ text: "I'm sorry, I don't understand. Please try again. Hint: Try typing in a request related to " + randomKey});
+      }
+    } else {
+      //Check if the message.name is in the displayed set. If not, add it to the displayed set
+      if (response.name && !displayed.has(response.name)) {
+        setDisplayed((prev) => new Set(prev.add(response.name)));
+      }
+      setMessage(response);
+    }
+    setTimeout(() => {
+      scrollToLastItem.current?.lastElementChild?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }, 1);
+    setTimeout(() => {
+      setText("");
+    }, 2);
+    setIsResponseLoading(false);
   };
 
   useLayoutEffect(() => {
@@ -128,8 +117,16 @@ function App() {
       const responseMessage = {
         title: currentTitle,
         role: message.role,
-        content: message.content,
+        content: message.text,
       };
+
+      if (message.image) {
+        responseMessage.image = message.image;
+        responseMessage.secretsRemaining = (Object.keys(fathersDayResponses).length - displayed.size);
+      } else if (message.video) {
+        responseMessage.video = message.video;
+        responseMessage.secretsRemaining = (Object.keys(fathersDayResponses).length - displayed.size);
+      }
 
       setPreviousChats((prevChats) => [...prevChats, newChat, responseMessage]);
       setLocalChats((prevChats) => [...prevChats, newChat, responseMessage]);
@@ -230,9 +227,9 @@ function App() {
                 src="images/chatgpt-logo.svg"
                 width={45}
                 height={45}
-                alt="ChatGPT"
+                alt="DadGPT"
               />
-              <h1>Chat GPT Clone</h1>
+              <h1>DadGPT</h1>
               <h3>How can I help you today?</h3>
             </div>
           )}
@@ -262,7 +259,7 @@ function App() {
                         <BiSolidUserCircle size={28.8} />
                       </div>
                     ) : (
-                      <img src="images/chatgpt-logo.svg" alt="ChatGPT" />
+                      <img src="images/chatgpt-logo.svg" alt="DadGPT" className="gpt-image"/>
                     )}
                     {isUser ? (
                       <div>
@@ -271,8 +268,12 @@ function App() {
                       </div>
                     ) : (
                       <div>
-                        <p className="role-title">ChatGPT</p>
+                        <p className="role-title">DadGPT</p>
                         <p>{chatMsg.content}</p>
+                        { chatMsg.image && <img src={chatMsg.image} alt="" className="chat-image"/> }
+                        { chatMsg.video && <video src={chatMsg.video} controls className="chat-video"/> }
+                        { chatMsg.secretsRemaining && chatMsg.secretsRemaining!==0 && <p>DadGPT Generations remaining: {chatMsg.secretsRemaining}</p> }
+                        { chatMsg.secretsRemaining===0 && <h1>You've consumed all your DadGPT Generation tokens! Come back next Father's Day for more</h1> }
                       </div>
                     )}
                   </li>
@@ -298,7 +299,7 @@ function App() {
               )}
             </form>
             <p>
-              ChatGPT can make mistakes. Consider checking important
+              DadGPT can only generate images and videos for a limited number of responses. Try to find them all!
               information.
             </p>
           </div>
